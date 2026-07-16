@@ -1,0 +1,311 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// USER & RBAC
+// -----------------------------------------------------------------------------
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  DEVELOPER
+  FINANCE
+  CLIENT
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?
+  role          Role      @default(CLIENT)
+  image         String?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relationships
+  assignedProjects Project[] @relation("ProjectAdmin")
+  assignedTasks    Task[]    @relation("TaskAssignee")
+  clientProfile    Client?   @relation("ClientUser")
+  payments         Payment[] @relation("PaymentReceiver")
+  
+  // Auditing
+  createdRecords ActivityLog[]
+}
+
+// -----------------------------------------------------------------------------
+// CRM / CLIENT MANAGEMENT
+// -----------------------------------------------------------------------------
+
+model Client {
+  id              String   @id @default(cuid())
+  userId          String?  @unique // Link to login user if client portal enabled
+  user            User?    @relation("ClientUser", fields: [userId], references: [id], onDelete: SetNull)
+  
+  companyName     String
+  clientName      String
+  gst             String?
+  pan             String?
+  contactPerson   String?
+  email           String
+  phone           String?
+  whatsapp        String?
+  address         String?  @db.Text
+  country         String?
+  industry        String?
+  website         String?
+  source          String?
+  accountManager  String?
+  status          String   @default("Active")
+  notes           String?  @db.Text
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  projects        Project[]
+  purchaseOrders  PurchaseOrder[]
+}
+
+// -----------------------------------------------------------------------------
+// PROJECT MANAGEMENT
+// -----------------------------------------------------------------------------
+
+enum ProjectStatus {
+  INQUIRY
+  REQUIREMENT_GATHERING
+  PROPOSAL_SENT
+  QUOTATION_APPROVED
+  ADVANCE_PENDING
+  ADVANCE_RECEIVED
+  UI_UX_DESIGN
+  DEVELOPMENT_STARTED
+  API_DEVELOPMENT
+  FRONTEND_DEVELOPMENT
+  BACKEND_DEVELOPMENT
+  INTERNAL_TESTING
+  CLIENT_REVIEW
+  BUG_FIXING
+  UAT
+  DEPLOYMENT
+  TRAINING
+  MAINTENANCE
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+model Project {
+  id              String        @id @default(cuid())
+  projectCode     String        @unique
+  name            String
+  description     String?       @db.Text
+  technology      String?
+  platform        String?
+  budget          Decimal?      @db.Decimal(10, 2)
+  priority        String?       @default("Medium")
+  startDate       DateTime?
+  deadline        DateTime?
+  expectedDelivery DateTime?
+  actualDelivery  DateTime?
+  status          ProjectStatus @default(INQUIRY)
+
+  clientId        String
+  client          Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  adminId         String?
+  admin           User?         @relation("ProjectAdmin", fields: [adminId], references: [id], onDelete: SetNull)
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  milestones      Milestone[]
+  payments        Payment[]
+  invoices        Invoice[]
+  gitRepositories GitRepository[]
+  servers         Server[]
+  tasks           Task[]
+}
+
+model Milestone {
+  id             String    @id @default(cuid())
+  projectId      String
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  title          String
+  progress       Int       @default(0) // 0-100
+  dueDate        DateTime?
+  completionDate DateTime?
+  remarks        String?   @db.Text
+  status         String    @default("Pending")
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Task {
+  id              String    @id @default(cuid())
+  projectId       String
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  title           String
+  description     String?   @db.Text
+  priority        String    @default("Medium")
+  sprint          String?
+  status          String    @default("Todo")
+  
+  assigneeId      String?
+  assignee        User?     @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  estimatedHours  Decimal?  @db.Decimal(5, 2)
+  actualHours     Decimal?  @db.Decimal(5, 2)
+  progress        Int       @default(0)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// -----------------------------------------------------------------------------
+// FINANCIAL MANAGEMENT
+// -----------------------------------------------------------------------------
+
+model Payment {
+  id              String    @id @default(cuid())
+  projectId       String
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  amount          Decimal   @db.Decimal(10, 2)
+  paymentDate     DateTime
+  paymentMode     String    // UPI, Bank Transfer, Cash, Cheque, Stripe, Razorpay
+  referenceNumber String?
+  transactionId   String?
+  remarks         String?   @db.Text
+  receiptUrl      String?
+
+  receivedById    String?
+  receivedBy      User?     @relation("PaymentReceiver", fields: [receivedById], references: [id], onDelete: SetNull)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Invoice {
+  id              String    @id @default(cuid())
+  invoiceNumber   String    @unique
+  projectId       String
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  invoiceDate     DateTime
+  dueDate         DateTime
+  status          String    @default("Draft") // Draft, Sent, Paid, Partially Paid, Overdue, Cancelled
+  
+  subtotal        Decimal   @db.Decimal(10, 2)
+  taxAmount       Decimal   @db.Decimal(10, 2)
+  discountAmount  Decimal   @db.Decimal(10, 2)
+  totalAmount     Decimal   @db.Decimal(10, 2)
+  terms           String?   @db.Text
+  pdfUrl          String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model PurchaseOrder {
+  id              String    @id @default(cuid())
+  poNumber        String    @unique
+  clientId        String
+  client          Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  date            DateTime
+  amount          Decimal   @db.Decimal(10, 2)
+  status          String    @default("Pending")
+  paymentTerms    String?   @db.Text
+  documentUrl     String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// -----------------------------------------------------------------------------
+// TECHNICAL ASSET MANAGEMENT
+// -----------------------------------------------------------------------------
+
+model GitRepository {
+  id              String    @id @default(cuid())
+  projectId       String
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  url             String
+  provider        String    // GitHub, GitLab, Bitbucket
+  branch          String    @default("main")
+  sshKey          String?   @db.Text
+  deploymentBranch String?
+  owner           String?
+  accessToken     String?   // Encrypted
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Server {
+  id              String    @id @default(cuid())
+  projectId       String?
+  project         Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  
+  provider        String
+  ipAddress       String
+  username        String
+  password        String?   // Encrypted
+  sshKey          String?   @db.Text
+  dbCredentials   String?   @db.Text // Encrypted JSON
+  controlPanel    String?
+  sslStatus       String?
+  expiryDate      DateTime?
+  renewalDate     DateTime?
+  backupDetails   String?   @db.Text
+  notes           String?   @db.Text
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Domain {
+  id              String    @id @default(cuid())
+  domainName      String    @unique
+  registrar       String
+  purchaseDate    DateTime?
+  renewalDate     DateTime?
+  expiryDate      DateTime?
+  dnsDetails      String?   @db.Text
+  sslStatus       String?
+  owner           String?
+  autoRenewal     Boolean   @default(false)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// -----------------------------------------------------------------------------
+// AUDIT LOGS
+// -----------------------------------------------------------------------------
+
+model ActivityLog {
+  id              String    @id @default(cuid())
+  userId          String?
+  user            User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  action          String
+  entity          String    // e.g., "Project", "Invoice"
+  entityId        String
+  details         String?   @db.Text
+  ipAddress       String?
+
+  createdAt       DateTime  @default(now())
+}
