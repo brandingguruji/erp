@@ -16,7 +16,7 @@ type Admin = {
   email: string;
 }
 
-export default function ProjectFormModal({ clients, admins }: { clients: Client[], admins: Admin[] }) {
+export default function ProjectFormModal({ clients, admins, isSuperAdmin, isAdmin }: { clients: Client[], admins: Admin[], isSuperAdmin?: boolean, isAdmin?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [credentials, setCredentials] = useState<{ name: string, value: string }[]>([]);
   const [selectedPocs, setSelectedPocs] = useState<string[]>([]);
@@ -142,10 +142,23 @@ export default function ProjectFormModal({ clients, admins }: { clients: Client[
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-zinc-700">Targeted End Date</label>
-                  <input type="date" name="deadline" className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-zinc-900 focus:outline-none" />
+                  <label className="text-sm font-medium text-zinc-700">Budget</label>
+                  <input name="budget" type="number" className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-zinc-900 focus:outline-none" placeholder="e.g. 5000" />
                 </div>
               </div>
+
+              {(isSuperAdmin || isAdmin) && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-700">Quote Value</label>
+                    <input name="quoteValue" type="number" className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-zinc-900 focus:outline-none" placeholder="e.g. 10000" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-700">Finalize Value</label>
+                    <input name="finalizeValue" type="number" className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-zinc-900 focus:outline-none" placeholder="e.g. 9500" />
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-1.5 pt-2 border-t">
                 <div className="flex justify-between items-center">

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Users, X } from "lucide-react";
-import { assignTeamMember } from "./actions";
+import { assignTeamMember, removeTeamAssignment } from "./actions";
 import { Button } from "@/components/ui/button";
 
 type User = {
@@ -46,6 +46,18 @@ export default function AssignTeamModal({
     }
   }
 
+  const handleRemove = async (assignmentId: string) => {
+    if (!confirm("Are you sure you want to remove this assignment?")) return;
+    setIsSubmitting(true);
+    try {
+      await removeTeamAssignment(assignmentId, projectId);
+    } catch (e: any) {
+      alert(e.message || "Failed to remove assignment");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <>
       <button
@@ -77,7 +89,17 @@ export default function AssignTeamModal({
                         <span className="font-medium text-zinc-900">{a.user.name || a.user.email}</span>
                         <span className="text-xs text-zinc-500 block">{a.user.role}</span>
                       </div>
-                      <span className="text-zinc-600 font-medium">{a.allocatedDays} Days</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-zinc-600 font-medium">{a.allocatedDays} Days</span>
+                        <button 
+                          type="button" 
+                          onClick={() => handleRemove(a.id)}
+                          className="text-red-500 hover:text-red-700 p-1 rounded-md hover:bg-red-50"
+                          disabled={isSubmitting}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>

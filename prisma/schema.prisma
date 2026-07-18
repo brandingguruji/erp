@@ -21,12 +21,14 @@ enum Role {
 
 model User {
   id            String    @id @default(cuid())
+  empId         String?   @unique
   name          String?
   email         String    @unique
   emailVerified DateTime?
   password      String?
   role          Role      @default(CLIENT)
   image         String?
+  isActive      Boolean   @default(true)
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -41,6 +43,7 @@ model User {
   // Many-to-many POC relations
   projectPocs      Project[] @relation("ProjectPOCs")
   clientPocs       Client[]  @relation("ClientPOCs")
+  updatedProjects  Project[] @relation("ProjectLastUpdatedBy")
   
   // Auditing
   createdRecords ActivityLog[]
@@ -137,6 +140,8 @@ model Project {
   technology      String?
   platform        String?
   budget          Decimal?      @db.Decimal(10, 2)
+  quoteValue      Decimal?      @db.Decimal(10, 2)
+  finalizeValue   Decimal?      @db.Decimal(10, 2)
   priority        String?       @default("Medium")
   startDate       DateTime?
   deadline        DateTime?
@@ -153,6 +158,9 @@ model Project {
 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+
+  lastUpdatedById String?
+  lastUpdatedBy   User?         @relation("ProjectLastUpdatedBy", fields: [lastUpdatedById], references: [id], onDelete: SetNull)
 
   milestones      Milestone[]
   payments        Payment[]

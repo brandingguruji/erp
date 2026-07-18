@@ -1,9 +1,28 @@
 import prisma from "@/lib/prisma";
-import { Search, User, Shield, Mail } from "lucide-react";
+import { Search, User, Shield, Mail, BadgeInfo, Filter } from "lucide-react";
 import UserFormModal from "./user-form-modal";
+import DeleteUserButton from "./delete-user-button";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import Link from "next/link";
 
-export default async function UsersPage() {
+export default async function UsersPage({
+  searchParams,
+}: {
+  searchParams: { status?: string };
+}) {
+  const session = await auth();
+  if (!session || !["SUPER_ADMIN", "ADMIN"].includes(session.user?.role as string)) {
+    redirect("/dashboard");
+  }
+
+  const isSuperAdmin = session.user?.role === "SUPER_ADMIN";
+  const filterStatus = searchParams.status || "active";
+
   const users = await prisma.user.findMany({
+    where: {
+      isActive: filterStatus === "active",
+    },
     orderBy: { createdAt: 'desc' }
   });
 
@@ -14,7 +33,21 @@ export default async function UsersPage() {
           <h1 className="text-3xl font-bold tracking-tight text-zinc-900">Users</h1>
           <p className="text-zinc-500 mt-1">Manage system access and team members.</p>
         </div>
-        <div className="flex w-full sm:w-auto items-center gap-3">
+        <div className="flex flex-wrap w-full sm:w-auto items-center gap-3">
+          <div className="flex bg-zinc-100 p-1 rounded-lg">
+            <Link
+              href="/dashboard/users?status=active"
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${filterStatus === 'active' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'}`}
+            >
+              Active
+            </Link>
+            <Link
+              href="/dashboard/users?status=inactive"
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${filterStatus === 'inactive' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'}`}
+            >
+              Inactive
+            </Link>
+          </div>
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-400" />
             <input 
@@ -23,7 +56,7 @@ export default async function UsersPage() {
               className="w-full bg-white border border-zinc-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
             />
           </div>
-          <UserFormModal />
+          <UserFormModal isSuperAdmin={isSuperAdmin} />
         </div>
       </div>
 
@@ -32,6 +65,7 @@ export default async function UsersPage() {
           <table className="w-full text-sm text-left">
             <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-600 font-medium">
               <tr>
+                <th className="px-6 py-4">EMP ID</th>
                 <th className="px-6 py-4">Name</th>
                 <th className="px-6 py-4">Role</th>
                 <th className="px-6 py-4 text-right">Actions</th>
@@ -47,6 +81,9 @@ export default async function UsersPage() {
               ) : (
                 users.map((u) => (
                   <tr key={u.id} className="hover:bg-zinc-50 transition-colors">
+                    <td className="px-6 py-4 font-medium text-zinc-900">
+                      {u.empId || "-"}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-full bg-zinc-900 text-white flex items-center justify-center font-semibold uppercase">
@@ -72,9 +109,12 @@ export default async function UsersPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="text-zinc-400 hover:text-zinc-900 font-medium text-sm transition-colors">
-                        Edit
-                      </button>
+                      {isSuperAdmin && (
+                        <div className="flex items-center justify-end gap-3">
+                          <UserFormModal isSuperAdmin={isSuperAdmin} user={u as any} />
+                          <DeleteUserButton userId={u.id} isActive={u.isActive} isSuperAdmin={isSuperAdmin} />
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))

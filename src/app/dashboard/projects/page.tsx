@@ -4,13 +4,23 @@ import ProjectFormModal from "./project-form-modal";
 import AssignTeamModal from "./assign-team-modal";
 import StatusProgressBar from "./status-progress-bar";
 import { auth } from "@/auth";
+import Link from "next/link";
 
 export default async function ProjectsPage() {
   const session = await auth();
   const currentUserId = session?.user?.id;
   const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN';
+  const isAdmin = session?.user?.role === 'ADMIN';
+
+  const whereClause = (isSuperAdmin || isAdmin) ? {} : {
+    OR: [
+      { assignments: { some: { userId: currentUserId } } },
+      { pocs: { some: { id: currentUserId } } }
+    ]
+  };
 
   const projects = await prisma.project.findMany({
+    where: whereClause,
     include: {
       client: true,
       pocs: true,
@@ -58,7 +68,7 @@ export default async function ProjectsPage() {
               className="w-full bg-white border border-zinc-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
             />
           </div>
-          <ProjectFormModal clients={clients} admins={admins} />
+          <ProjectFormModal clients={clients} admins={admins} isSuperAdmin={isSuperAdmin} isAdmin={isAdmin} />
         </div>
       </div>
 
@@ -122,16 +132,21 @@ export default async function ProjectsPage() {
                         history={project.statusHistory}
                       />
                     </td>
-                    <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                      <AssignTeamModal 
-                        projectId={project.id} 
-                        projectName={project.name} 
-                        users={teamUsers} 
-                        assignments={project.assignments} 
-                      />
-                      <button className="text-zinc-400 hover:text-zinc-900 font-medium text-sm transition-colors">
-                        View
-                      </button>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-3">
+                        <Link 
+                          href={`/dashboard/projects/${project.id}`}
+                          className="text-zinc-400 hover:text-zinc-900 font-medium text-sm transition-colors"
+                        >
+                          View
+                        </Link>
+                        <AssignTeamModal 
+                          projectId={project.id} 
+                          projectName={project.name} 
+                          users={teamUsers} 
+                          assignments={project.assignments} 
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))
