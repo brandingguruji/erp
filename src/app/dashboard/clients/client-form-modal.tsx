@@ -23,7 +23,7 @@ export default function ClientFormModal() {
 
   return (
     <>
-      <button 
+      <button
         onClick={() => setIsOpen(true)}
         className="flex h-10 items-center gap-2 rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
       >
@@ -36,14 +36,14 @@ export default function ClientFormModal() {
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold">Add New Client</h2>
-              <button 
+              <button
                 onClick={() => setIsOpen(false)}
                 className="rounded-full p-2 hover:bg-zinc-100 transition-colors"
               >
                 <X className="h-5 w-5 text-zinc-500" />
               </button>
             </div>
-            
+
             <form action={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">

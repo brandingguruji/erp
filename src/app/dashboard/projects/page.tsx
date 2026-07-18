@@ -1,19 +1,45 @@
 import prisma from "@/lib/prisma";
 import { Search, FolderKanban, UserCircle, Calendar } from "lucide-react";
 import ProjectFormModal from "./project-form-modal";
+import AssignTeamModal from "./assign-team-modal";
+import StatusProgressBar from "./status-progress-bar";
+import { auth } from "@/auth";
 
 export default async function ProjectsPage() {
+  const session = await auth();
+  const currentUserId = session?.user?.id;
+  const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN';
+
   const projects = await prisma.project.findMany({
     include: {
       client: true,
-      pocs: true
+      pocs: true,
+      assignments: {
+        include: { user: true }
+      },
+      statusHistory: {
+        include: { changedBy: true },
+        orderBy: { createdAt: 'desc' }
+      }
     },
     orderBy: { createdAt: 'desc' }
   });
 
   const clients = await prisma.client.findMany({
-    select: { id: true, companyName: true },
+    select: { id: true, companyName: true, clientName: true },
     orderBy: { companyName: 'asc' }
+  });
+
+  const teamUsers = await prisma.user.findMany({
+    where: { role: { in: ['DEVELOPER', 'ADMIN', 'SUPER_ADMIN'] } },
+    select: { id: true, name: true, email: true, role: true },
+    orderBy: { name: 'asc' }
+  });
+
+  const admins = await prisma.user.findMany({
+    where: { role: { in: ['ADMIN', 'SUPER_ADMIN', 'DEVELOPER'] } },
+    select: { id: true, name: true, email: true },
+    orderBy: { name: 'asc' }
   });
 
   return (
@@ -26,13 +52,13 @@ export default async function ProjectsPage() {
         <div className="flex w-full sm:w-auto items-center gap-3">
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-400" />
-            <input 
-              type="text" 
-              placeholder="Search projects..." 
+            <input
+              type="text"
+              placeholder="Search projects..."
               className="w-full bg-white border border-zinc-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
             />
           </div>
-          <ProjectFormModal clients={clients} />
+          <ProjectFormModal clients={clients} admins={admins} />
         </div>
       </div>
 
@@ -70,7 +96,9 @@ export default async function ProjectsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="font-medium text-zinc-900">{project.client.companyName}</div>
+                      <div className="font-medium text-zinc-900">
+                        {project.client.clientName} {project.client.companyName ? <span className="text-zinc-500 font-normal text-sm">({project.client.companyName})</span> : ''}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap items-center gap-2 text-zinc-600">
@@ -87,11 +115,20 @@ export default async function ProjectsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-800">
-                        {project.status.replace(/_/g, ' ')}
-                      </span>
+                      <StatusProgressBar 
+                        projectId={project.id}
+                        currentStatus={project.status}
+                        canEdit={isSuperAdmin || project.pocs.some(p => p.id === currentUserId)}
+                        history={project.statusHistory}
+                      />
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                      <AssignTeamModal 
+                        projectId={project.id} 
+                        projectName={project.name} 
+                        users={teamUsers} 
+                        assignments={project.assignments} 
+                      />
                       <button className="text-zinc-400 hover:text-zinc-900 font-medium text-sm transition-colors">
                         View
                       </button>

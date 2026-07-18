@@ -32,9 +32,11 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   // Relationships
-  assignedTasks    Task[]    @relation("TaskAssignee")
-  clientProfile    Client?   @relation("ClientUser")
-  payments         Payment[] @relation("PaymentReceiver")
+  assignedTasks      Task[]              @relation("TaskAssignee")
+  projectAssignments ProjectAssignment[]
+  statusChanges      ProjectStatusHistory[]
+  clientProfile      Client?             @relation("ClientUser")
+  payments           Payment[]           @relation("PaymentReceiver")
   
   // Many-to-many POC relations
   projectPocs      Project[] @relation("ProjectPOCs")
@@ -42,6 +44,20 @@ model User {
   
   // Auditing
   createdRecords ActivityLog[]
+}
+
+model ProjectAssignment {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  allocatedDays Int      @default(0)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([projectId, userId])
 }
 
 // -----------------------------------------------------------------------------
@@ -117,6 +133,7 @@ model Project {
   projectCode     String        @unique
   name            String
   description     String?       @db.Text
+  credentials     Json?
   technology      String?
   platform        String?
   budget          Decimal?      @db.Decimal(10, 2)
@@ -131,6 +148,8 @@ model Project {
   client          Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
 
   pocs            User[]        @relation("ProjectPOCs")
+  assignments     ProjectAssignment[]
+  statusHistory   ProjectStatusHistory[]
 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -141,6 +160,16 @@ model Project {
   gitRepositories GitRepository[]
   servers         Server[]
   tasks           Task[]
+}
+
+model ProjectStatusHistory {
+  id          String        @id @default(cuid())
+  projectId   String
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  changedById String
+  changedBy   User          @relation(fields: [changedById], references: [id], onDelete: Cascade)
+  status      ProjectStatus
+  createdAt   DateTime      @default(now())
 }
 
 model Milestone {
