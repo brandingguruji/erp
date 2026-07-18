@@ -25,8 +25,28 @@ export async function createProject(formData: FormData) {
       projectCode,
       description,
       clientId,
-      adminId: session.user.id,
+      pocs: {
+        connect: { id: session.user.id }
+      },
       status: "INQUIRY",
+    }
+  });
+
+  revalidatePath("/dashboard/projects");
+}
+
+export async function assignProjectPoc(projectId: string, userIds: string[]) {
+  const session = await auth();
+  if (!session || !["SUPER_ADMIN", "ADMIN"].includes(session.user?.role as string)) {
+    throw new Error("Unauthorized to assign POCs");
+  }
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: {
+      pocs: {
+        set: userIds.map((id) => ({ id })) // This will completely replace the current POCs with the new selection
+      }
     }
   });
 

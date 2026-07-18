@@ -6,7 +6,7 @@ export default async function ProjectsPage() {
   const projects = await prisma.project.findMany({
     include: {
       client: true,
-      admin: true
+      pocs: true
     },
     orderBy: { createdAt: 'desc' }
   });
@@ -43,7 +43,7 @@ export default async function ProjectsPage() {
               <tr>
                 <th className="px-6 py-4">Project</th>
                 <th className="px-6 py-4">Client</th>
-                <th className="px-6 py-4">Assigned Admin</th>
+                <th className="px-6 py-4">POCs</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
@@ -73,9 +73,17 @@ export default async function ProjectsPage() {
                       <div className="font-medium text-zinc-900">{project.client.companyName}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-zinc-600">
-                        <UserCircle className="h-4 w-4" />
-                        {project.admin?.name || 'Unassigned'}
+                      <div className="flex flex-wrap items-center gap-2 text-zinc-600">
+                        {project.pocs.length > 0 ? (
+                          project.pocs.map((poc, idx) => (
+                            <span key={poc.id || idx} className="flex items-center gap-1 bg-zinc-100 px-2 py-1 rounded text-xs">
+                              <UserCircle className="h-3 w-3" />
+                              {poc.name || poc.email}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-zinc-400 text-xs">Unassigned</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4">

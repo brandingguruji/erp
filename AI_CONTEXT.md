@@ -1,70 +1,72 @@
-# AI Context & Developer Guide
-**Project:** Branding Guruji ERP System
+# BrandingGuruji ERP - Project Documentation
 
-This document is specifically designed to help AI coding assistants (and developers) immediately understand the project architecture, tech stack, standard operating procedures, and current state. Read this before suggesting architectural changes or writing new modules.
+This document serves as the "brain" and context hub for AI assistants to understand the structure, data models, pages, and server actions within the project, allowing for faster navigation and development.
 
----
-
-## 1. Tech Stack
-- **Framework:** Next.js (App Router)
-- **Database ORM:** Prisma
-- **Database:** MySQL
-- **Authentication:** NextAuth.js / Auth.js (Credentials Provider)
-- **Styling:** Tailwind CSS
-- **Icons:** Lucide React
-- **Component Library:** Shadcn UI (or similar custom Zinc-themed Radix UI components)
-- **Security:** `bcryptjs` for password hashing
+## 📂 1. Core Tech Stack
+- **Framework**: Next.js (App Router)
+- **Language**: TypeScript
+- **Database ORM**: Prisma Client
+- **Database Provider**: MySQL
+- **Styling**: Tailwind CSS
+- **Authentication**: NextAuth.js (`src/auth.ts`)
 
 ---
 
-## 2. Project Architecture & Flow
+## 🗄️ 2. Database Models (`prisma/schema.prisma`)
 
-### Global Flow
-1. **Authentication:** All routes under `/dashboard/*` are protected. `auth.ts` handles the Credentials authentication flow. `session.user` contains `id`, `email`, `name`, and `role`.
-2. **Database:** Prisma schema is the single source of truth (`prisma/schema.prisma`). Any schema changes require `npx prisma db push` followed by `npx prisma generate`. (Note: `npm run dev` must be stopped during generation on Windows to avoid `EPERM` file lock errors).
-3. **Server Actions:** Data mutations (create, update, delete) are handled strictly via Next.js Server Actions (`"use server"`) usually located in an `actions.ts` file within the feature's directory.
+*Run `npx prisma db push` and `npx prisma generate` after modifying these.*
 
-### Directory Structure
-```text
-c:\Development\brandingguruji-erp\
-├── .env                              # MySQL Database URL and AUTH_SECRET (Required)
-├── prisma/
-│   └── schema.prisma                 # Core Models: User, Client, Project, Task, Invoice, etc.
-├── scripts/
-│   └── seed-admin.mjs                # Initial database script to create the first SUPER_ADMIN
-└── src/
-    ├── auth.ts                       # NextAuth configuration and auth handler
-    ├── lib/
-    │   └── prisma.ts                 # Global Prisma client singleton
-    └── app/
-        ├── login/                    # Public login route
-        └── dashboard/                # Protected Application Routes
-            ├── layout.tsx            # Wraps protected routes
-            ├── sidenav.tsx           # Global sidebar navigation
-            ├── clients/              # Client CRM Module (List, Form, Actions)
-            ├── projects/             # Project Management Module
-            └── users/                # User Management Module (RBAC assignment)
-```
+1. **User**: Represents system users (Super Admin, Admin, Developer, Finance, Client). Uses role-based access control (RBAC).
+2. **Client**: Core CRM model storing client companies (Fields: `companyName`, `clientName`, `gst`, `pan`, etc).
+3. **Project**: Main operational entity tracking progress, budget, timelines, and technical details. Links to `Client` and `User` (Admin).
+4. **Milestone & Task**: Nested under Project for project management and tracking.
+5. **Payment, Invoice, PurchaseOrder**: Financial models tracking transactions and documents.
+6. **GitRepository, Server, Domain**: Technical asset management models.
+7. **ActivityLog**: For system-wide audit trailing.
 
 ---
 
-## 3. Standard Operating Procedure (SOP) for Adding New Features
+## 🗺️ 3. Routing & Pages (`src/app/`)
 
-When asked to create a new module (e.g., "Invoices"), follow this exact flow:
+### Public Routes
+- `/login` (`src/app/login/page.tsx`): The main entry point for unauthenticated users. Uses a client-side form (`login-form.tsx`) pointing to NextAuth credentials.
 
-1. **Schema Update:** Add the model to `prisma/schema.prisma`.
-2. **Database Sync:** Run `npx prisma db push` and `npx prisma generate` (Ensure Next.js server is stopped).
-3. **Server Actions (`actions.ts`):** Create a dedicated `actions.ts` file in the new route (`src/app/dashboard/invoices/actions.ts`). Ensure it includes an authentication and role check (e.g., `if (!session) throw Error...`).
-4. **UI Components:** 
-   - Build `page.tsx` for displaying the list (fetch data directly using Prisma since it's a Server Component).
-   - Build `[feature]-form-modal.tsx` (Client Component) for creating/editing records.
-5. **Navigation:** Add the new route to the `navLinks` array in `src/app/dashboard/sidenav.tsx`.
+### Dashboard Routes (`src/app/dashboard/`)
+*All nested routes share `layout.tsx` (containing the sidebar/navbar) and require authentication.*
+
+- **Dashboard Home**: `/dashboard` (`page.tsx`) - Overview and analytics.
+- **Users Module**: `/dashboard/users` (`page.tsx`) - View, manage, and create system users.
+- **Clients Module**: `/dashboard/clients` (`page.tsx`) - View and manage client accounts.
+- **Projects Module**: `/dashboard/projects` (`page.tsx`) - Manage active and historical projects.
 
 ---
 
-## 4. Current State & Known Quirks
+## ⚙️ 4. Server Actions (`actions.ts`)
 
-- **Role Based Access Control (RBAC):** The system uses an Enum `Role` (SUPER_ADMIN, ADMIN, DEVELOPER, FINANCE, CLIENT).
-- **Client Creation Override:** Currently, the strict RBAC check in `src/app/dashboard/clients/actions.ts` (`createClient`) is **commented out** for development purposes so standard users can create clients while testing. Re-enable this check before production deployment.
-- **Select Inputs in React:** Always use `defaultValue=""` instead of `selected` on `<option>` tags inside forms to avoid React hydration warnings.
-- **Passwords:** All passwords must be hashed with `bcryptjs` before inserting into the Prisma database.
+These files contain the backend logic invoked directly by React Server Components or client forms. They typically authenticate the user session, validate input, and execute Prisma database queries.
+
+- **Clients (`src/app/dashboard/clients/actions.ts`)**:
+  - `createClient(formData: FormData)`: Parses form data, checks required fields, and creates a new `Client` record in the database.
+  - `deleteClient(id: string)`: Enforces `SUPER_ADMIN` role and deletes the target client.
+
+- **Projects (`src/app/dashboard/projects/actions.ts`)**:
+  - `createProject(formData: FormData)`: Parses incoming data to generate a new `Project`.
+
+*(Note: Add new server actions in their respective domain folders next to the pages that consume them).*
+
+---
+
+## 🧩 5. UI Components (`src/components/`)
+- Shared and reusable interface elements are stored here.
+- `src/components/ui/button.tsx`: Reusable button component following Tailwind and Radix/shadcn patterns (if implemented).
+
+---
+
+## 🔄 6. AI Development Workflow
+
+When modifying this repository, AI agents should follow these steps:
+
+1. **Database Changes**: Always update `schema.prisma` first. Generate the client immediately after. Ensure you double-check Prisma model typings if TypeScript compiler errors occur.
+2. **Backend**: For data mutation, write an async function in the relevant `actions.ts` file. Mark with `"use server"`. Use `revalidatePath` to update UI automatically.
+3. **Frontend**: Fetch data directly in React Server Components (`page.tsx`). Pass data down to Client Components (`"use client"`) only for interactivity (like Modals or Forms).
+4. **Security**: Validate `session.user.role` inside Server Actions to prevent unauthorized database modifications.

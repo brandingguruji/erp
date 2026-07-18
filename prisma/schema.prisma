@@ -32,10 +32,13 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   // Relationships
-  assignedProjects Project[] @relation("ProjectAdmin")
   assignedTasks    Task[]    @relation("TaskAssignee")
   clientProfile    Client?   @relation("ClientUser")
   payments         Payment[] @relation("PaymentReceiver")
+  
+  // Many-to-many POC relations
+  projectPocs      Project[] @relation("ProjectPOCs")
+  clientPocs       Client[]  @relation("ClientPOCs")
   
   // Auditing
   createdRecords ActivityLog[]
@@ -63,9 +66,10 @@ model Client {
   industry        String?
   website         String?
   source          String?
-  accountManager  String?
   status          String   @default("Active")
   notes           String?  @db.Text
+
+  pocs            User[]   @relation("ClientPOCs")
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -102,6 +106,12 @@ enum ProjectStatus {
   CANCELLED
 }
 
+enum MilestoneType {
+  PAYMENT
+  DEVELOPMENT
+  GENERAL
+}
+
 model Project {
   id              String        @id @default(cuid())
   projectCode     String        @unique
@@ -120,8 +130,7 @@ model Project {
   clientId        String
   client          Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
 
-  adminId         String?
-  admin           User?         @relation("ProjectAdmin", fields: [adminId], references: [id], onDelete: SetNull)
+  pocs            User[]        @relation("ProjectPOCs")
 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -140,6 +149,7 @@ model Milestone {
   project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   
   title          String
+  type           MilestoneType @default(GENERAL)
   progress       Int       @default(0) // 0-100
   dueDate        DateTime?
   completionDate DateTime?
