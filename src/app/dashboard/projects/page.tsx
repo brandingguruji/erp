@@ -5,6 +5,7 @@ import AssignTeamModal from "./assign-team-modal";
 import StatusProgressBar from "./status-progress-bar";
 import LogPaymentModal from "./log-payment-modal";
 import Pagination from "@/components/pagination";
+import InvoiceModal from "./invoice-modal";
 import { auth } from "@/auth";
 import Link from "next/link";
 
@@ -31,6 +32,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
       include: {
         client: true,
         pocs: true,
+        payments: { orderBy: { paymentDate: 'asc' } },
         assignments: { include: { user: true } },
         statusHistory: { include: { changedBy: true }, orderBy: { createdAt: 'desc' } }
       },
@@ -150,13 +152,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
                           {isSuperAdmin || isAdmin ? (
                             <>
                               <LogPaymentModal projectId={project.id} projectName={project.name} />
-                              <Link 
-                                href={`/dashboard/projects/${project.id}/invoice`}
-                                target="_blank"
-                                className="flex items-center gap-1.5 bg-[#d82483]/10 hover:bg-[#d82483]/20 text-[#d82483] font-semibold py-1.5 px-3 rounded-lg transition-colors text-xs uppercase tracking-wider"
-                              >
-                                <FileText className="w-3.5 h-3.5" /> Invoice
-                              </Link>
+                              <InvoiceModal project={project} />
                             </>
                           ) : null}
                         </div>

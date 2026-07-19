@@ -26,12 +26,14 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
     <div className="min-h-screen bg-zinc-100 py-8 flex justify-center print:bg-white print:py-0">
       
       {/* A4 Paper Container */}
-      <div className="w-full max-w-[210mm] min-h-[297mm] bg-white shadow-xl relative overflow-hidden print:shadow-none print:w-[210mm] print:h-[297mm]">
+      <div 
+        className="w-full max-w-[210mm] min-h-[297mm] bg-white shadow-xl relative overflow-hidden print:shadow-none print:w-[210mm] print:h-[297mm]"
+        style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}
+      >
         
         {/* Background Letterhead Image */}
-        <div className="absolute inset-0 z-0 pointer-events-none">
-          {/* Ensure you save your letterhead design as 'letterhead.jpg' inside the 'public' folder! */}
-          <img src="/letterhead.jpeg" alt="Letterhead" className="w-full h-full object-cover" />
+        <div className="absolute top-0 left-0 w-full h-full z-0 pointer-events-none print:w-[210mm] print:h-[297mm]">
+          <img src="/letterhead.jpeg" alt="Letterhead" className="w-full h-full object-cover print:object-fill" />
         </div>
 
         {/* Dynamic Content Overlay */}
