@@ -200,11 +200,11 @@ export function TimelineCard({ project, canEdit }: { project: any, canEdit: bool
         <div className="space-y-5 text-sm">
           <div>
             <span className="text-zinc-500 text-xs uppercase tracking-wider font-semibold block mb-1">Start Date</span>
-            <p className="font-medium text-zinc-900">{project.startDate ? new Date(project.startDate).toLocaleDateString(undefined, {dateStyle: 'medium'}) : "Not set"}</p>
+            <p className="font-medium text-zinc-900">{project.startDate ? new Date(project.startDate).toLocaleDateString('en-US', {dateStyle: 'medium'}) : "Not set"}</p>
           </div>
           <div>
             <span className="text-zinc-500 text-xs uppercase tracking-wider font-semibold block mb-1">Deadline</span>
-            <p className="font-medium text-zinc-900">{project.deadline ? new Date(project.deadline).toLocaleDateString(undefined, {dateStyle: 'medium'}) : "Not set"}</p>
+            <p className="font-medium text-zinc-900">{project.deadline ? new Date(project.deadline).toLocaleDateString('en-US', {dateStyle: 'medium'}) : "Not set"}</p>
           </div>
         </div>
       ) : (

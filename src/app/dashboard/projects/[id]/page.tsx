@@ -80,7 +80,7 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
                 {project.lastUpdatedBy && (
                   <span className="flex items-center gap-1.5 opacity-80">
                     <Clock className="w-4 h-4" />
-                    Last updated by {project.lastUpdatedBy.name} on {project.updatedAt.toLocaleDateString()}
+                    Last updated by {project.lastUpdatedBy.name} on {project.updatedAt.toLocaleDateString('en-US', {dateStyle: 'medium'})}
                   </span>
                 )}
               </div>
@@ -90,8 +90,13 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 p-8">
-        <h2 className="text-lg font-semibold text-zinc-900 mb-6 uppercase tracking-widest text-xs">Project Status</h2>
-        <StatusProgressBar currentStatus={project.status} />
+        <StatusProgressBar 
+          projectId={project.id} 
+          currentStatus={project.status} 
+          canEdit={canEditGeneral} 
+          history={project.statusHistory as any}
+          inline={true} 
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
