@@ -1,11 +1,22 @@
 import prisma from "@/lib/prisma";
 import { PlusCircle, Search, Mail, Phone, Building } from "lucide-react";
 import ClientFormModal from "./client-form-modal";
+import Pagination from "@/components/pagination";
 
-export default async function ClientsPage() {
-  const clients = await prisma.client.findMany({
-    orderBy: { createdAt: 'desc' }
-  });
+export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const resolvedParams = await searchParams;
+  const page = typeof resolvedParams.page === 'string' ? Number(resolvedParams.page) : 1;
+  const PAGE_SIZE = 10;
+  const skip = (page - 1) * PAGE_SIZE;
+
+  const [clients, totalCount] = await Promise.all([
+    prisma.client.findMany({
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: PAGE_SIZE
+    }),
+    prisma.client.count()
+  ]);
 
   return (
     <div className="space-y-6">
@@ -99,6 +110,7 @@ export default async function ClientsPage() {
               )}
             </tbody>
           </table>
+          <Pagination totalPages={Math.ceil(totalCount / PAGE_SIZE)} />
         </div>
       </div>
     </div>

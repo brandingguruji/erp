@@ -5,26 +5,37 @@ import DeleteUserButton from "./delete-user-button";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Pagination from "@/components/pagination";
 
-export default async function UsersPage({
-  searchParams,
-}: {
-  searchParams: { status?: string };
-}) {
+export default async function UsersPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const session = await auth();
   if (!session || !["SUPER_ADMIN", "ADMIN"].includes(session.user?.role as string)) {
     redirect("/dashboard");
   }
 
+  const resolvedParams = await searchParams;
   const isSuperAdmin = session.user?.role === "SUPER_ADMIN";
-  const filterStatus = searchParams.status || "active";
+  const filterStatus = typeof resolvedParams.status === 'string' ? resolvedParams.status : "active";
+  
+  const page = typeof resolvedParams.page === 'string' ? Number(resolvedParams.page) : 1;
+  const PAGE_SIZE = 10;
+  const skip = (page - 1) * PAGE_SIZE;
 
-  const users = await prisma.user.findMany({
-    where: {
-      isActive: filterStatus === "active",
-    },
-    orderBy: { createdAt: 'desc' }
-  });
+  const [users, totalCount] = await Promise.all([
+    prisma.user.findMany({
+      where: {
+        isActive: filterStatus === "active",
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: PAGE_SIZE
+    }),
+    prisma.user.count({
+      where: {
+        isActive: filterStatus === "active",
+      }
+    })
+  ]);
 
   return (
     <div className="space-y-6">
@@ -121,6 +132,7 @@ export default async function UsersPage({
               )}
             </tbody>
           </table>
+          <Pagination totalPages={Math.ceil(totalCount / PAGE_SIZE)} />
         </div>
       </div>
     </div>

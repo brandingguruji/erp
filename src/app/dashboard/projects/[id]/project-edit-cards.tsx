@@ -110,7 +110,7 @@ export function FinancialsCard({ project, canEdit }: { project: any, canEdit: bo
     setPaymentLoading(true);
     const fd = new FormData(e.currentTarget);
     try {
-      await addProjectPayment(project.id, Number(fd.get("amount")), fd.get("mode") as string, fd.get("remarks") as string);
+      await addProjectPayment(project.id, Number(fd.get("amount")), fd.get("mode") as string, fd.get("remarks") as string, fd.get("paymentDate") as string);
       setAddingPayment(false);
     } catch (err: any) {
       alert(err.message || "Payment failed");
@@ -175,6 +175,7 @@ export function FinancialsCard({ project, canEdit }: { project: any, canEdit: bo
                 <form onSubmit={handleAddPayment} className="space-y-3 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
                   <h4 className="text-xs font-bold text-zinc-800 uppercase tracking-wider">Log Payment</h4>
                   <input type="number" name="amount" required placeholder="Amount (₹)" className="w-full text-sm border rounded-lg px-3 py-2 bg-white" />
+                  <input type="date" name="paymentDate" defaultValue={new Date().toISOString().split('T')[0]} required className="w-full text-sm border rounded-lg px-3 py-2 bg-white text-zinc-600" />
                   <select name="mode" required className="w-full text-sm border rounded-lg px-3 py-2 bg-white">
                     <option value="Bank Transfer">Bank Transfer</option>
                     <option value="UPI">UPI</option>

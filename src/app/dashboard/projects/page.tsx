@@ -1,12 +1,18 @@
 import prisma from "@/lib/prisma";
-import { Search, FolderKanban, UserCircle, Calendar } from "lucide-react";
+import { Search, FolderKanban, UserCircle, Calendar, FileText } from "lucide-react";
 import ProjectFormModal from "./project-form-modal";
 import AssignTeamModal from "./assign-team-modal";
 import StatusProgressBar from "./status-progress-bar";
+import LogPaymentModal from "./log-payment-modal";
+import Pagination from "@/components/pagination";
 import { auth } from "@/auth";
 import Link from "next/link";
 
-export default async function ProjectsPage() {
+export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const resolvedParams = await searchParams;
+  const page = typeof resolvedParams.page === 'string' ? Number(resolvedParams.page) : 1;
+  const PAGE_SIZE = 10;
+  const skip = (page - 1) * PAGE_SIZE;
   const session = await auth();
   const currentUserId = session?.user?.id;
   const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN';
@@ -19,21 +25,21 @@ export default async function ProjectsPage() {
     ]
   };
 
-  const projects = await prisma.project.findMany({
-    where: whereClause,
-    include: {
-      client: true,
-      pocs: true,
-      assignments: {
-        include: { user: true }
+  const [projects, totalCount] = await Promise.all([
+    prisma.project.findMany({
+      where: whereClause,
+      include: {
+        client: true,
+        pocs: true,
+        assignments: { include: { user: true } },
+        statusHistory: { include: { changedBy: true }, orderBy: { createdAt: 'desc' } }
       },
-      statusHistory: {
-        include: { changedBy: true },
-        orderBy: { createdAt: 'desc' }
-      }
-    },
-    orderBy: { createdAt: 'desc' }
-  });
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: PAGE_SIZE
+    }),
+    prisma.project.count({ where: whereClause })
+  ]);
 
   const clients = await prisma.client.findMany({
     select: { id: true, companyName: true, clientName: true },
@@ -133,13 +139,27 @@ export default async function ProjectsPage() {
                       />
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        <Link 
-                          href={`/dashboard/projects/${project.id}`}
-                          className="text-zinc-400 hover:text-zinc-900 font-medium text-sm transition-colors"
-                        >
-                          View
-                        </Link>
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="flex items-center gap-2">
+                          <Link 
+                            href={`/dashboard/projects/${project.id}`}
+                            className="text-zinc-600 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200 px-3 py-1.5 rounded-lg font-semibold text-xs transition-colors"
+                          >
+                            View
+                          </Link>
+                          {isSuperAdmin || isAdmin ? (
+                            <>
+                              <LogPaymentModal projectId={project.id} projectName={project.name} />
+                              <Link 
+                                href={`/dashboard/projects/${project.id}/invoice`}
+                                target="_blank"
+                                className="flex items-center gap-1.5 bg-[#d82483]/10 hover:bg-[#d82483]/20 text-[#d82483] font-semibold py-1.5 px-3 rounded-lg transition-colors text-xs uppercase tracking-wider"
+                              >
+                                <FileText className="w-3.5 h-3.5" /> Invoice
+                              </Link>
+                            </>
+                          ) : null}
+                        </div>
                         <AssignTeamModal 
                           projectId={project.id} 
                           projectName={project.name} 
@@ -153,6 +173,7 @@ export default async function ProjectsPage() {
               )}
             </tbody>
           </table>
+          <Pagination totalPages={Math.ceil(totalCount / PAGE_SIZE)} />
         </div>
       </div>
     </div>

@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 import { FileText, ArrowRight, DollarSign } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
+import Pagination from "@/components/pagination";
 
-export default async function InvoicesPage() {
+export default async function InvoicesPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const session = await auth();
   if (!session) redirect("/login");
 
@@ -39,6 +40,12 @@ export default async function InvoicesPage() {
   });
 
   const grandDue = grandTotal - grandPaid;
+  
+  const resolvedParams = await searchParams;
+  const page = typeof resolvedParams.page === 'string' ? Number(resolvedParams.page) : 1;
+  const PAGE_SIZE = 10;
+  const skip = (page - 1) * PAGE_SIZE;
+  const paginatedProjects = formattedProjects.slice(skip, skip + PAGE_SIZE);
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-8">
@@ -86,7 +93,7 @@ export default async function InvoicesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 text-zinc-900 font-medium bg-white">
-              {formattedProjects.map((project) => (
+              {paginatedProjects.map((project) => (
                 <tr key={project.id} className="hover:bg-zinc-50/50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="font-bold text-zinc-900">{project.invoiceNumber}</div>
@@ -117,6 +124,7 @@ export default async function InvoicesPage() {
               ))}
             </tbody>
           </table>
+          <Pagination totalPages={Math.ceil(formattedProjects.length / PAGE_SIZE)} />
         </div>
       </div>
     </div>
