@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { updateProjectDetails, updateProjectTimeline, updateProjectFinancials } from "../actions";
-import { Edit2, Check, X, FileText, Briefcase, Calendar, Lock } from "lucide-react";
+import { updateProjectDetails, updateProjectTimeline, updateProjectFinancials, addProjectPayment } from "../actions";
+import { Edit2, Check, X, FileText, Briefcase, Calendar, Lock, Plus, ArrowRight } from "lucide-react";
 
 export function DetailsCard({ project, canEdit, clients }: { project: any, canEdit: boolean, clients: any[] }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -84,6 +84,8 @@ export function DetailsCard({ project, canEdit, clients }: { project: any, canEd
 export function FinancialsCard({ project, canEdit }: { project: any, canEdit: boolean }) {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [addingPayment, setAddingPayment] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -91,21 +93,43 @@ export function FinancialsCard({ project, canEdit }: { project: any, canEdit: bo
     const fd = new FormData(e.currentTarget);
     try {
       await updateProjectFinancials(project.id, {
-        budget: fd.get("budget") ? parseFloat(fd.get("budget") as string) : null,
-        quoteValue: fd.get("quoteValue") ? parseFloat(fd.get("quoteValue") as string) : null,
-        finalizeValue: fd.get("finalizeValue") ? parseFloat(fd.get("finalizeValue") as string) : null,
+        budget: fd.get("budget") ? Number(fd.get("budget")) : undefined,
+        quoteValue: fd.get("quoteValue") ? Number(fd.get("quoteValue")) : undefined,
+        finalizeValue: fd.get("finalizeValue") ? Number(fd.get("finalizeValue")) : undefined,
       });
       setIsEditing(false);
     } catch (err: any) {
-      alert(err.message || "Failed to update");
+      alert(err.message || "Update failed");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
+  async function handleAddPayment(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setPaymentLoading(true);
+    const fd = new FormData(e.currentTarget);
+    try {
+      await addProjectPayment(project.id, Number(fd.get("amount")), fd.get("mode") as string, fd.get("remarks") as string);
+      setAddingPayment(false);
+    } catch (err: any) {
+      alert(err.message || "Payment failed");
+    } finally {
+      setPaymentLoading(false);
+    }
+  }
+
+  const totalAmount = Number(project.finalizeValue || project.quoteValue || 0);
+  const totalPaid = (project.payments || []).reduce((sum: number, p: any) => sum + Number(p.amount), 0);
+  const balanceDue = totalAmount - totalPaid;
+
   return (
-    <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-sm border border-zinc-200/60 p-6 relative group transition-all hover:shadow-md">
-      {canEdit && !isEditing && (
-        <button onClick={() => setIsEditing(true)} className="absolute top-4 right-4 p-2 bg-zinc-100 rounded-full text-zinc-500 hover:text-zinc-900 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-sm border border-zinc-200/60 p-6 relative group xl:col-span-1">
+      {canEdit && !isEditing && !addingPayment && (
+        <button 
+          onClick={() => setIsEditing(true)}
+          className="absolute top-6 right-6 p-2 rounded-lg bg-white shadow-sm border border-zinc-100 text-zinc-400 opacity-0 group-hover:opacity-100 transition-all hover:text-blue-600 hover:border-blue-200 z-10"
+        >
           <Edit2 className="w-4 h-4" />
         </button>
       )}
@@ -121,16 +145,61 @@ export function FinancialsCard({ project, canEdit }: { project: any, canEdit: bo
         <div className="space-y-5 text-sm">
           <div>
             <span className="text-zinc-500 text-xs uppercase tracking-wider font-semibold block mb-1">Budget</span>
-            <p className="font-medium text-zinc-900 text-lg">{project.budget ? `$${project.budget.toString()}` : "Not set"}</p>
+            <p className="font-medium text-zinc-900 text-lg">{project.budget ? `₹${project.budget.toString()}` : "Not set"}</p>
           </div>
-          <div>
-            <span className="text-zinc-500 text-xs uppercase tracking-wider font-semibold block mb-1">Quote Value</span>
-            <p className="font-medium text-zinc-900">{project.quoteValue ? `$${project.quoteValue.toString()}` : "Not set"}</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <span className="text-zinc-500 text-xs uppercase tracking-wider font-semibold block mb-1">Quote Value</span>
+              <p className="font-medium text-zinc-900">{project.quoteValue ? `₹${project.quoteValue.toString()}` : "Not set"}</p>
+            </div>
+            <div>
+              <span className="text-zinc-500 text-xs uppercase tracking-wider font-semibold block mb-1">Finalize Value</span>
+              <p className="font-medium text-zinc-900">{project.finalizeValue ? `₹${project.finalizeValue.toString()}` : "Not set"}</p>
+            </div>
           </div>
-          <div>
-            <span className="text-zinc-500 text-xs uppercase tracking-wider font-semibold block mb-1">Finalize Value</span>
-            <p className="font-medium text-zinc-900">{project.finalizeValue ? `$${project.finalizeValue.toString()}` : "Not set"}</p>
+
+          <div className="pt-4 border-t border-zinc-100 grid grid-cols-2 gap-4">
+             <div>
+              <span className="text-emerald-600 text-xs uppercase tracking-wider font-bold block mb-1">Total Paid</span>
+              <p className="font-bold text-emerald-700 text-lg">₹{totalPaid.toLocaleString('en-IN')}</p>
+            </div>
+            <div>
+              <span className="text-[#d82483] text-xs uppercase tracking-wider font-bold block mb-1">Balance Due</span>
+              <p className="font-bold text-[#d82483] text-lg">₹{balanceDue.toLocaleString('en-IN')}</p>
+            </div>
           </div>
+
+          {canEdit && (
+            <div className="pt-2 flex flex-col gap-2 mt-4 border-t border-zinc-100">
+              {addingPayment ? (
+                <form onSubmit={handleAddPayment} className="space-y-3 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
+                  <h4 className="text-xs font-bold text-zinc-800 uppercase tracking-wider">Log Payment</h4>
+                  <input type="number" name="amount" required placeholder="Amount (₹)" className="w-full text-sm border rounded-lg px-3 py-2 bg-white" />
+                  <select name="mode" required className="w-full text-sm border rounded-lg px-3 py-2 bg-white">
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Cheque">Cheque</option>
+                  </select>
+                  <input type="text" name="remarks" placeholder="Remarks (optional)" className="w-full text-sm border rounded-lg px-3 py-2 bg-white" />
+                  <div className="flex gap-2 justify-end pt-1">
+                    <button type="button" onClick={() => setAddingPayment(false)} className="text-xs text-zinc-500 font-medium px-2 py-1">Cancel</button>
+                    <button type="submit" disabled={paymentLoading} className="text-xs bg-emerald-600 text-white font-medium px-3 py-1.5 rounded-md hover:bg-emerald-700 disabled:opacity-50">Save</button>
+                  </div>
+                </form>
+              ) : (
+                <div className="flex gap-2">
+                  <button onClick={() => setAddingPayment(true)} className="flex-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold uppercase tracking-wider py-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5">
+                    <Plus className="w-3.5 h-3.5" /> Log Payment
+                  </button>
+                  <a href={`/dashboard/projects/${project.id}/invoice`} target="_blank" rel="noopener noreferrer" className="flex-1 bg-zinc-900 text-white hover:bg-zinc-800 text-xs font-bold uppercase tracking-wider py-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5" /> Invoice <ArrowRight className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       ) : (
         <form onSubmit={handleSave} className="space-y-4">

@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { auth } from "@/auth"
+import { sendEmail } from "@/lib/mail"
 
 export async function createProject(formData: FormData) {
   const session = await auth();
@@ -226,4 +227,82 @@ export async function removeTeamAssignment(assignmentId: string, projectId: stri
   
   revalidatePath(`/dashboard/projects/${projectId}`);
   revalidatePath("/dashboard/projects");
+}
+
+export async function addProjectPayment(projectId: string, amount: number, paymentMode: string, remarks?: string, paymentDate?: string) {
+  const session = await auth();
+  if (!session || !["SUPER_ADMIN", "ADMIN", "FINANCE"].includes(session.user?.role as string)) {
+    throw new Error("Unauthorized to add payments");
+  }
+
+  await prisma.payment.create({
+    data: {
+      projectId,
+      amount,
+      paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
+      paymentMode,
+      remarks,
+      receivedById: session.user.id
+    }
+  });
+
+  revalidatePath(`/dashboard/projects/${projectId}`);
+}
+
+export async function sendInvoiceEmail(projectId: string) {
+  const session = await auth();
+  if (!session || !["SUPER_ADMIN", "ADMIN", "FINANCE"].includes(session.user?.role as string)) {
+    throw new Error("Unauthorized");
+  }
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    include: { client: true, payments: true }
+  });
+
+  if (!project) throw new Error("Project not found");
+
+  const totalAmount = Number(project.finalizeValue || project.quoteValue || 0);
+  const totalPaid = project.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const balanceDue = totalAmount - totalPaid;
+
+  const invoiceNumber = `INV-${project.projectCode}-${new Date().getFullYear()}`;
+  const htmlContent = `
+    <div style="font-family: sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #d82483;">Brandingguruji LLP - Invoice #${invoiceNumber}</h2>
+      <p>Dear ${project.client.clientName},</p>
+      <p>Please find the invoice details for the project <strong>${project.name}</strong> below:</p>
+      
+      <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <tr style="background: #f9f9f9; border-bottom: 1px solid #ddd;">
+          <th style="padding: 10px; text-align: left;">Total Amount</th>
+          <td style="padding: 10px; text-align: right;">₹${totalAmount.toLocaleString('en-IN')}</td>
+        </tr>
+        <tr style="background: #f9f9f9; border-bottom: 1px solid #ddd;">
+          <th style="padding: 10px; text-align: left;">Total Paid</th>
+          <td style="padding: 10px; text-align: right; color: green;">- ₹${totalPaid.toLocaleString('en-IN')}</td>
+        </tr>
+        <tr style="border-bottom: 2px solid #333;">
+          <th style="padding: 10px; text-align: left; font-size: 1.2em;">Balance Due</th>
+          <td style="padding: 10px; text-align: right; font-size: 1.2em; color: #d82483; font-weight: bold;">₹${balanceDue.toLocaleString('en-IN')}</td>
+        </tr>
+      </table>
+
+      <p style="margin-top: 30px;">You can view the full detailed invoice or make a payment by contacting us.</p>
+      <p>Thank you for your business!</p>
+      <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+      <p style="font-size: 12px; color: #777;">
+        Brandingguruji LLP<br/>
+        18, Gour Mohan Roy, Bhatpara<br/>
+        North 24 pgs, West Bengal, India 743123<br/>
+        GSTIN: 19ABGFB7809M1Z5
+      </p>
+    </div>
+  `;
+
+  return await sendEmail({
+    to: project.client.email,
+    subject: `Invoice for ${project.name} - Brandingguruji LLP`,
+    html: htmlContent
+  });
 }
