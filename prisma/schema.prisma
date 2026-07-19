@@ -49,6 +49,15 @@ model User {
   createdRecords ActivityLog[]
 }
 
+model RolePermission {
+  id       String  @id @default(cuid())
+  role     Role
+  module   String  // e.g., "Projects", "Tasks", "Clients"
+  canView  Boolean @default(true)
+  
+  @@unique([role, module])
+}
+
 model ProjectAssignment {
   id            String   @id @default(cuid())
   projectId     String

@@ -1,8 +1,23 @@
-import { signOut } from "@/auth"
+import { signOut, auth } from "@/auth"
 import Link from "next/link"
 import { ShieldCheck, LayoutDashboard, Briefcase, Users, UserPlus, CheckSquare, FileText, Settings, LogOut } from "lucide-react"
+import prisma from "@/lib/prisma"
 
-export default function SideNav() {
+export default async function SideNav() {
+  const session = await auth();
+  const role = session?.user?.role as any;
+  const isSuperAdmin = role === "SUPER_ADMIN";
+
+  const permissions = isSuperAdmin ? [] : await prisma.rolePermission.findMany({
+    where: { role }
+  });
+
+  const hasAccess = (moduleName: string) => {
+    if (isSuperAdmin || moduleName === "Settings") return true;
+    const perm = permissions.find(p => p.module === moduleName);
+    return perm ? perm.canView : false;
+  };
+
   const navLinks = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Projects", href: "/dashboard/projects", icon: Briefcase },
@@ -11,7 +26,7 @@ export default function SideNav() {
     { name: "Tasks", href: "/dashboard/tasks", icon: CheckSquare },
     { name: "Invoices", href: "/dashboard/invoices", icon: FileText },
     { name: "Settings", href: "/dashboard/settings", icon: Settings },
-  ]
+  ].filter(link => hasAccess(link.name));
 
   return (
     <div className="flex h-full flex-col px-3 py-4 md:px-2 bg-zinc-900 text-white">
