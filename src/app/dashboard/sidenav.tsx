@@ -1,6 +1,6 @@
 import { signOut, auth } from "@/auth"
 import Link from "next/link"
-import { ShieldCheck, LayoutDashboard, Briefcase, Users, UserPlus, CheckSquare, FileText, Settings, LogOut } from "lucide-react"
+import { ShieldCheck, LayoutDashboard, Briefcase, Users, UserPlus, CheckSquare, FileText, Settings, LogOut, Receipt } from "lucide-react"
 import prisma from "@/lib/prisma"
 
 export default async function SideNav() {
@@ -25,6 +25,7 @@ export default async function SideNav() {
     { name: "Users", href: "/dashboard/users", icon: UserPlus },
     { name: "Tasks", href: "/dashboard/tasks", icon: CheckSquare },
     { name: "Invoices", href: "/dashboard/invoices", icon: FileText },
+    { name: "Freelancer Payments", href: "/dashboard/freelancer-payments", icon: Receipt },
     { name: "Settings", href: "/dashboard/settings", icon: Settings },
   ].filter(link => hasAccess(link.name));
 

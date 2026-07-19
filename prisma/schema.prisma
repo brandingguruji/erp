@@ -39,6 +39,7 @@ model User {
   statusChanges      ProjectStatusHistory[]
   clientProfile      Client?             @relation("ClientUser")
   payments           Payment[]           @relation("PaymentReceiver")
+  freelancerPayments FreelancerPayment[] @relation("FreelancerPaymentReceiver")
   
   // Many-to-many POC relations
   projectPocs      Project[] @relation("ProjectPOCs")
@@ -177,6 +178,7 @@ model Project {
   gitRepositories GitRepository[]
   servers         Server[]
   tasks           Task[]
+  freelancerPayments FreelancerPayment[]
 }
 
 model ProjectStatusHistory {
@@ -226,6 +228,8 @@ model Task {
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+
+  freelancerPayments FreelancerPayment[]
 }
 
 // -----------------------------------------------------------------------------
@@ -247,6 +251,27 @@ model Payment {
 
   receivedById    String?
   receivedBy      User?     @relation("PaymentReceiver", fields: [receivedById], references: [id], onDelete: SetNull)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model FreelancerPayment {
+  id              String    @id @default(cuid())
+  
+  freelancerId    String
+  freelancer      User      @relation("FreelancerPaymentReceiver", fields: [freelancerId], references: [id], onDelete: Cascade)
+  
+  projectId       String
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  taskId          String?
+  task            Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  amount          Decimal   @db.Decimal(10, 2)
+  paymentDate     DateTime
+  paymentMode     String    // UPI, Bank Transfer, Cash, etc.
+  remarks         String?   @db.Text
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt

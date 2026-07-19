@@ -152,7 +152,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
                           {isSuperAdmin || isAdmin ? (
                             <>
                               <LogPaymentModal projectId={project.id} projectName={project.name} />
-                              <InvoiceModal project={project} />
+                              <InvoiceModal project={JSON.parse(JSON.stringify(project))} />
                             </>
                           ) : null}
                         </div>
